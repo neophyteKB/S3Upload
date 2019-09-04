@@ -1,0 +1,6 @@
+framework module Pods_S3Upload {
+  umbrella header "Pods-S3Upload-umbrella.h"
+
+  export *
+  module * { export * }
+}
