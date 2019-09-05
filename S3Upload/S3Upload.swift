@@ -39,16 +39,9 @@ class S3 {
 
 //MARK: => Upload files
 extension S3 {
-    public func uploadRequest(data: Data?,
-                              fileName: String,
-                              mediaType: FileTypes,
+    public func uploadRequest(modal: UploadModal,
                               uploadProgress: ((_ progress: Progress) -> ())?,
                               completion: @escaping S3CompletionBlock) {
-        
-        guard let data = data else {
-            completion(nil, "File data is nil")
-            return
-        }
         
         // Prepare the bucket configurations
         bucketSetup()
@@ -62,31 +55,24 @@ extension S3 {
         
         //Start Uploading
         let transferUtility = AWSS3TransferUtility.default()
-        transferUtility.uploadData(data,
+        transferUtility.uploadData(modal.data,
                                    bucket: S3.bucketName,
-                                   key: fileName,
-                                   contentType: mediaType.mimeType,
+                                   key: modal.fileName,
+                                   contentType: modal.type.mimeType,
                                    expression: expression) { (task, error) in
                                     if let error = error {
                                         completion(nil, error.localizedDescription)
                                         return
                                     }
                                     print(task.taskIdentifier)
-                                    let url = self.publicUrl(fileName)
+                                    let url = self.publicUrl(modal.fileName)
                                     completion(url, nil)
         }
     }
     
-    public func uploadInMultipart(data: Data?,
-                                fileName: String,
-                                mediaType: FileTypes,
+    public func uploadInMultipart(modal: UploadModal,
                                 uploadProgress: ((_ progress: Progress) -> ())?,
                                 completion: @escaping S3CompletionBlock) {
-        
-        guard let data = data else {
-            completion(nil, "File data is nil")
-            return
-        }
         
         // Prepare the bucket configurations
         bucketSetup()
@@ -100,10 +86,10 @@ extension S3 {
         
         //Start Uploading
         let transferUtility = AWSS3TransferUtility.default()
-        transferUtility.uploadUsingMultiPart(data: data,
+        transferUtility.uploadUsingMultiPart(data: modal.data,
                                              bucket: S3.bucketName,
-                                             key: fileName,
-                                             contentType: mediaType.mimeType,
+                                             key: modal.fileName,
+                                             contentType: modal.type.mimeType,
                                              expression: expression) { (task, error) in
                                                 
                                                 if let error = error {
@@ -111,7 +97,7 @@ extension S3 {
                                                     return
                                                 }
                                                 print(task.transferID)
-                                                let url = self.publicUrl(fileName)
+                                                let url = self.publicUrl(modal.fileName)
                                                 completion(url, nil)
         }
     }
@@ -176,6 +162,12 @@ extension S3 {
             }
         }
     }
+}
+
+struct UploadModal {
+    var data: Data
+    var fileName: String
+    var type: FileTypes
 }
 
 enum FileTypes {

@@ -12,6 +12,8 @@ import Reachability
 
 class ViewController: UIViewController {
 
+    let reachability = Reachability()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -26,8 +28,23 @@ class ViewController: UIViewController {
         present(imagePicker, animated: true, completion: nil)
     }
     
+    private func requestS3Upload(modal: UploadModal) {
+        S3.shared.uploadInMultipart(modal: modal,
+                                    uploadProgress: { (progress) in
+                                        
+                                        debugPrint("Proress (Multipart upload) == \(progress.fractionCompleted)")
+                                        
+        }) { (url, error) in
+            if let error = error {
+                print("Error in uploading ==== \(error)")
+            }
+            else if let url = url {
+                print("Url =  \(url)")
+            }
+        }
+    }
+    
     private func enableReachablility() {
-        let reachability = Reachability()
         reachability?.whenReachable = { reachability in
             if reachability.connection == .wifi {
                 S3.shared.performActions(action: .resume)
@@ -72,21 +89,11 @@ class ViewController: UIViewController {
 extension ViewController {
     private func uploadFile(_ image: UIImage?, _ videoUrl:URL?) {
         if let data = image?.jpegData(compressionQuality: 0.7) {
-            S3.shared.uploadRequest(data: data,
-                                    fileName: "image\(Int(Date().timeIntervalSinceReferenceDate)).jpeg",
-                                    mediaType: .image,
-                                    uploadProgress: { (progress) in
-                                        
-                    debugPrint("Proress (Direct upload) == \(progress.fractionCompleted)")
-                                        
-            }) { (url, error) in
-                if let error = error {
-                    print("Error in uploading ==== \(error)")
-                }
-                else if let url = url {
-                    print("Url =  \(url)")
-                }
-            }
+            let fileName = "image\(Int(Date().timeIntervalSinceReferenceDate)).jpeg"
+            let modal = UploadModal(data: data,
+                                    fileName: fileName,
+                                    type: .image)
+            requestS3Upload(modal: modal)
         }
         else if let url = videoUrl, let data = try? Data(contentsOf: url) {
            
@@ -96,22 +103,14 @@ extension ViewController {
              url.compressVideo(fileName: <FILENAME>, compression: <COMPRESSION_VALUE>, handler: <COMPLETION_BLOCK>)
              **/
             
-            let fileName = "video\(Int(Date().timeIntervalSinceReferenceDate)).mp4"
-            S3.shared.uploadInMultipart(data: data,
-                                        fileName: fileName,
-                                        mediaType: .video,
-                                        uploadProgress: { (progress) in
-                                            
-                debugPrint("Proress (Multipart upload) == \(progress.fractionCompleted)")
-                                            
-            }) { (url, error) in
-                if let error = error {
-                    print("Error in uploading ==== \(error)")
-                }
-                else if let url = url {
-                    print("Url =  \(url)")
-                }
+            if data.count > 5000000, reachability?.connection != .wifi {
+               // "You are not connected to Wifi"  - show Alert
             }
+            let fileName = "video\(Int(Date().timeIntervalSinceReferenceDate)).mp4"
+            let modal = UploadModal(data: data,
+                                    fileName: fileName,
+                                    type: .video)
+            requestS3Upload(modal: modal)
         }
     }
 }
