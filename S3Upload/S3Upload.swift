@@ -27,6 +27,11 @@ class S3 {
         AWSServiceManager.default().defaultServiceConfiguration = configuration
     }
     
+    private func publicUrl(_ fileName: String) -> String {
+        let url = [AWSS3.default().configuration.endpoint.url.absoluteString, S3.bucketName, fileName].joined(separator: "/")
+        return url
+    }
+    
     static var shared = S3()
     public lazy var multipartUploadingTasks = [AWSS3TransferUtilityMultiPartUploadTask]()
     public lazy var uploadingTasks = [AWSS3TransferUtilityTask]()
@@ -67,7 +72,7 @@ extension S3 {
                                         return
                                     }
                                     print(task.taskIdentifier)
-                                    let url = "https://\(S3.bucketName).amazonaws.com/\(fileName)"
+                                    let url = self.publicUrl(fileName)
                                     completion(url, nil)
         }
     }
@@ -106,7 +111,7 @@ extension S3 {
                                                     return
                                                 }
                                                 print(task.transferID)
-                                                let url = "https://\(S3.bucketName).amazonaws.com/\(fileName)"
+                                                let url = self.publicUrl(fileName)
                                                 completion(url, nil)
         }
     }
@@ -189,4 +194,26 @@ enum FileTypes {
 
 enum UploadAction {
     case pause, resume, cancel
+}
+
+
+import AVKit
+extension URL {
+    func compressVideo(fileName: String, compression: String = AVAssetExportPresetMediumQuality, handler:@escaping (_ outputUrl: URL?) -> ()) {
+        let outputUrl = URL(fileURLWithPath: (NSTemporaryDirectory() + fileName))
+        let urlAsset = AVURLAsset(url: self, options: nil)
+        guard let exportSession = AVAssetExportSession(asset: urlAsset, presetName: compression) else {
+            handler(nil)
+            
+            return
+        }
+        exportSession.outputURL = outputUrl
+        exportSession.outputFileType = AVFileType.mov
+        exportSession.shouldOptimizeForNetworkUse = true
+        exportSession.exportAsynchronously { () -> Void in
+            if exportSession.status == .completed {
+                handler(outputUrl)
+            }
+        }
+    }
 }

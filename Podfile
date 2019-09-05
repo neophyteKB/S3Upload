@@ -7,6 +7,7 @@ target 'S3Upload' do
 
   # Pods for S3Upload
 pod 'AWSS3'
+pod 'ReachabilitySwift'
 
   target 'S3UploadTests' do
     inherit! :search_paths
